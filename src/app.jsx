@@ -1,9 +1,8 @@
-import { useRef, useState, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { ScrollControls, Scroll, Environment, useScroll, useCursor } from '@react-three/drei';
+import { useRef, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Environment, OrbitControls } from '@react-three/drei';
 import { Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
-import gsap from 'gsap';
 
 // Partícula flutuante
 function FloatingParticle({ speed = 1, color = '#ffffff' }) {
@@ -14,29 +13,21 @@ function FloatingParticle({ speed = 1, color = '#ffffff' }) {
     mesh.current.rotation.y += 0.01;
   });
   return (
-    <mesh ref={mesh} position={[0, 0, 0]}>
+    <mesh ref={mesh}>
       <sphereGeometry args={[0.02, 16, 16]} />
       <meshBasicMaterial color={color} transparent opacity={0.8} />
     </mesh>
   );
 }
 
-// Cena 3D de fundo
-function BackgroundScene() {
-  const scroll = useScroll();
-  const { camera } = useThree();
-
-  useFrame(() => {
-    camera.position.z = 10 + scroll.offset * 5;
-    camera.position.y = scroll.offset * 2;
-  });
-
+// Cena 3D
+function Scene() {
   return (
-    <>
+    <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
       <ambientLight intensity={0.5} />
       <directionalLight position={[10, 10, 5]} intensity={1} color="#ffffff" />
       <Environment preset="dark" />
-      {[...Array(50)].map((_, i) => (
+      {[...Array(30)].map((_, i) => (
         <FloatingParticle
           key={i}
           speed={Math.random() * 2 + 0.5}
@@ -48,78 +39,8 @@ function BackgroundScene() {
           ]}
         />
       ))}
-    </>
-  );
-}
-
-// Cursor personalizado com trail
-function CustomCursor() {
-  const cursor = useRef(null);
-  const [isHovered, setIsHovered] = useState(false);
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (cursor.current) {
-        cursor.current.style.left = `${e.clientX}px`;
-        cursor.current.style.top = `${e.clientY}px`;
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  useCursor(isHovered);
-
-  return (
-    <div
-      ref={cursor}
-      className={`fixed w-8 h-8 border-2 rounded-full pointer-events-none z-50 transition-all duration-300 ${
-        isHovered ? 'border-white scale-150' : 'border-white/80 scale-100'
-      }`}
-      style={{ transform: 'translate(-50%, -50%)' }}
-    />
-  );
-}
-
-// Seção Hero com Scroll
-function HeroSection() {
-  const sectionRef = useRef();
-  const { scroll } = useScroll();
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.to(sectionRef.current?.children, {
-        opacity: 1,
-        y: 0,
-        stagger: 0.3,
-        duration: 1,
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top center',
-        },
-      });
-    }, sectionRef);
-
-    return () => ctx.revert();
-  }, []);
-
-  return (
-    <section ref={sectionRef} className="h-screen flex items-center justify-center relative">
-      <div className="text-center opacity-0 translate-y-10">
-        <h1 className="text-6xl md:text-8xl font-light mb-6">Creating</h1>
-        <h1 className="text-6xl md:text-8xl font-light mb-8">Digital</h1>
-        <h1 className="text-6xl md:text-8xl font-light mb-12">Realities</h1>
-        <motion.a
-          whileHover={{ x: 10 }}
-          href="#work"
-          className="inline-flex items-center text-sm uppercase tracking-wider border-b border-transparent hover:border-white pb-1"
-        >
-          Explore <span className="ml-2">→</span>
-        </motion.a>
-      </div>
-    </section>
+      <OrbitControls enableZoom={false} autoRotate />
+    </Canvas>
   );
 }
 
@@ -129,23 +50,16 @@ export default function App() {
 
   return (
     <>
-      {/* Cursor Personalizado */}
-      <CustomCursor />
+      {/* Cursor personalizado (opcional) */}
+      <div
+        className="hidden md:block fixed w-8 h-8 border border-white rounded-full pointer-events-none z-50 mix-blend-difference"
+        style={{ transform: 'translate(-50%, -50%)' }}
+        id="custom-cursor"
+      ></div>
 
-      {/* 3D Canvas */}
-      <div className="fixed inset-0 z-0">
-        <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
-          <ScrollControls pages={3} damping={0.1}>
-            <BackgroundScene />
-            <Scroll>
-              <HeroSection />
-            </Scroll>
-          </ScrollControls>
-        </Canvas>
-      </div>
-
-      {/* Overlay para conteúdo */}
+      {/* Overlay de conteúdo (HTML) */}
       <div className="relative z-10 pointer-events-none">
+        {/* Navigation */}
         <nav className="fixed top-0 w-full z-50 px-8 py-6 pointer-events-auto">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -155,10 +69,60 @@ export default function App() {
           >
             STUDIO
           </motion.div>
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden z-50"
+          >
+            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </nav>
+
+        {/* Hero Text */}
+        <section className="h-screen flex items-center justify-center pointer-events-none">
+          <div className="text-center px-8 max-w-6xl mx-auto">
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="text-5xl md:text-7xl lg:text-8xl font-light mb-6"
+            >
+              Creating
+            </motion.h1>
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="text-5xl md:text-7xl lg:text-8xl font-light mb-8"
+            >
+              Digital
+            </motion.h1>
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              className="text-5xl md:text-7xl lg:text-8xl font-light mb-12"
+            >
+              Experiences
+            </motion.h1>
+            <motion.a
+              href="#work"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="inline-flex items-center text-sm uppercase tracking-wider border-t border-b border-transparent hover:border-white pt-4 pb-2 pointer-events-auto"
+            >
+              View Work <span className="ml-2">→</span>
+            </motion.a>
+          </div>
+        </section>
       </div>
 
-      {/* Conteúdo Secundário (Work, Studio, etc.) */}
+      {/* Cena 3D de fundo */}
+      <div className="fixed inset-0 z-0">
+        <Scene />
+      </div>
+
+      {/* Conteúdo secundário (Work, Studio, etc.) */}
       <div className="relative z-10 mt-96 px-8 pointer-events-auto">
         <section id="work" className="py-32">
           <div className="max-w-6xl mx-auto">
